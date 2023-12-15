@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import GUI from 'lil-gui';
 
+import fragmentShader  from './shaders/galaxy/fragmentShader.glsl';
+import vertexShader  from './shaders/galaxy/vertexShader.glsl';
+
 let galaxy;
 let particleGeometry;
 let particleMaterial;
@@ -10,7 +13,7 @@ let particleMaterial;
 
 const params = {
   count: 350000,
-  size: 0.01,
+  size: 15,
   radius: 5,
   branches: 3,
   spin: 1,
@@ -22,7 +25,7 @@ const params = {
 
 const gui = new GUI();
 gui.add(params, 'count').min(100).max(1000000).step(100).onFinishChange(createGalaxy);
-gui.add(params, 'size').min(0.001).max(0.1).step(0.001).onFinishChange(createGalaxy);
+gui.add(params, 'size').min(1).max(25).step(1).onFinishChange(createGalaxy);
 gui.add(params, 'radius').min(1).max(10).step(0.1).onFinishChange(createGalaxy);
 gui.add(params, 'branches').min(2).max(15).step(1).onFinishChange(createGalaxy);
 gui.add(params, 'spin').min(- 5).max(5).step(0.001).onFinishChange(createGalaxy);
@@ -74,14 +77,16 @@ function createGalaxy() {
     scene.remove(galaxy)
   }
 
-  //Positions
 
   const positions = new Float32Array(params.count * 3);
   const colors = new Float32Array(params.count * 3);
+  const scales = new Float32Array(params.count);
 
   for (let i = 0; i < params.count; i++) {
 
     const i3 = i * 3;
+
+    //Positions
 
     const radius = Math.random() * params.radius;
     const branchAngle = i % params.branches / params.branches * (Math.PI * 2);
@@ -94,6 +99,10 @@ function createGalaxy() {
     positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
     positions[i3 + 1] = randomY;
     positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+
+    //Ranom scale 
+
+    scales[i] = Math.random();
 
     //Colors
 
@@ -113,15 +122,19 @@ function createGalaxy() {
   particleGeometry = new THREE.BufferGeometry();
   particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  particleGeometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
 
   //Material
 
-  particleMaterial = new THREE.PointsMaterial({
-    size: params.size,
-    sizeAttenuation: true,
+  particleMaterial = new THREE.ShaderMaterial({
     depthWrite: false,
     vertexColors: true,
-    blending: THREE.AdditiveBlending
+    blending: THREE.AdditiveBlending,
+    vertexShader: vertexShader,
+    fragmentShader: fragmentShader,
+    uniforms: {
+      uSize: {value: params.size * Math.min(window.devicePixelRatio, 2)}
+    }
   });
 
   galaxy = new THREE.Points(particleGeometry, particleMaterial);
