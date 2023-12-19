@@ -20,7 +20,8 @@ const params = {
   randomness: 0.2,
   randomnessPower: 3,
   insideColor: '#2eafff',
-  outsideColor: '#e538c0'
+  outsideColor: '#e538c0',
+  animate: false
 }
 
 const gui = new GUI();
@@ -33,6 +34,7 @@ gui.add(params, 'randomness').min(0).max(2).step(0.001).onFinishChange(createGal
 gui.add(params, 'randomnessPower').min(1).max(10).step(0.001).onFinishChange(createGalaxy);
 gui.addColor(params, 'insideColor').onFinishChange(createGalaxy);
 gui.addColor(params, 'outsideColor').onFinishChange(createGalaxy);
+gui.add(params, 'animate');
 
 //Scene 
 
@@ -71,16 +73,17 @@ scene.add(camera);
 //Objects
 
 function createGalaxy() {
+  
   if (galaxy) {
     particleGeometry.dispose();
     particleMaterial.dispose();
     scene.remove(galaxy)
   }
 
-
   const positions = new Float32Array(params.count * 3);
   const colors = new Float32Array(params.count * 3);
   const scales = new Float32Array(params.count);
+  const randomPos = new Float32Array(params.count * 3);
 
   for (let i = 0; i < params.count; i++) {
 
@@ -96,13 +99,19 @@ function createGalaxy() {
     const randomY = Math.pow(Math.random(), params.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * params.randomness * radius;
     const randomZ = Math.pow(Math.random(), params.randomnessPower) * (Math.random() < 0.5 ? 1 : -1) * params.randomness * radius;
 
-    positions[i3] = Math.cos(branchAngle + spinAngle) * radius + randomX;
-    positions[i3 + 1] = randomY;
-    positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius + randomZ;
+    positions[i3] = Math.cos(branchAngle + spinAngle) * radius;
+    positions[i3 + 1] = 0;
+    positions[i3 + 2] = Math.sin(branchAngle + spinAngle) * radius;
 
-    //Ranom scale 
+    //Random scale 
 
     scales[i] = Math.random();
+
+    //Random positions
+
+    randomPos[i3    ] = randomX;
+    randomPos[i3 + 1] = randomY;
+    randomPos[i3 + 2] = randomZ;
 
     //Colors
 
@@ -123,6 +132,7 @@ function createGalaxy() {
   particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
   particleGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
   particleGeometry.setAttribute('aScale', new THREE.BufferAttribute(scales, 1));
+  particleGeometry.setAttribute('aRandomPos', new THREE.BufferAttribute(randomPos, 3));
 
   //Material
 
@@ -133,7 +143,8 @@ function createGalaxy() {
     vertexShader: vertexShader,
     fragmentShader: fragmentShader,
     uniforms: {
-      uSize: {value: params.size * Math.min(window.devicePixelRatio, 2)}
+      uSize: {value: params.size * Math.min(window.devicePixelRatio, 2)},
+      uTime: {value: 0}
     }
   });
 
@@ -167,6 +178,9 @@ function tick() {
   const elapsedTime = clock.getElapsedTime();
 
   //Update Material
+  if (params.animate) {
+    particleMaterial.uniforms.uTime.value += 0.015;
+  }
 
   // Update controls
   controls.update();
